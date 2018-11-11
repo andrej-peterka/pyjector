@@ -6,3 +6,8 @@ include/
 lib/
 .git/
 .Python
+.idea
+*.egg-info
+.DS_Store
+dist/
+.python-version
