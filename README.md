@@ -18,7 +18,8 @@ from pyjector import Pyjector
 # like `dmesg` if you're on linux.
 port = '/dev/ttyUSB0'
 
-# Load the configuration from you JSON and pass it to the class.
+# Load the configuration from a JSON or get the dict from somewhere else
+# and pass it to the class.
 # Check the files in `pyjector/projector_configs` for examples.
 conf = json.load(open('benq.json'))
 pyjector = Pyjector(port=port, config=conf)
