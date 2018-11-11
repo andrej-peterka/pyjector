@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='Pyjector',
@@ -7,12 +7,12 @@ setup(
     author='John Brodie',
     author_email='john@brodie.me',
     url='http://www.github.com/JohnBrodie/pyjector',
-    packages=['pyjector'],
+    packages=find_packages(),
     install_requires=[
         'pyserial',
     ],
     package_data={
-        'pyjector': ['projector_configs/*.json'],
+        'pyjector.cli': ['projector_configs/*.json'],
     },
     entry_points='''
         [console_scripts]

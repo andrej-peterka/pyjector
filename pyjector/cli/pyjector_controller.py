@@ -1,5 +1,10 @@
 import argparse
+import json
 import logging
+import sys
+
+import pkg_resources
+
 from pyjector import Pyjector
 
 
@@ -15,10 +20,22 @@ def main():
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel, format='%(created)f %(levelname)s %(message)s')
-    pyjector = Pyjector(port=args.port, device_id=args.device)
 
-    command = getattr(pyjector, args.command)
-    command(args.action)
+    if not pkg_resources.resource_exists(__name__, 'projector_configs/{device_id}.json'.format(device_id=args.device)):
+        logging.error('Configuration file for "{device_id} not found at {resource_folder}.'.format(
+            device_id=args.device,
+            resource_folder=pkg_resources.resource_filename(__name__, 'projector_configs')
+        ))
+        sys.exit(1)
+
+    with pkg_resources.resource_stream(
+            __name__,
+            'projector_configs/{device_id}.json'.format(device_id=args.device)
+    ) as cf:
+        pyjector = Pyjector(port=args.port, config=json.load(cf))
+
+        command = getattr(pyjector, args.command)
+        command(args.action)
 
 
 if __name__ == '__main__':
