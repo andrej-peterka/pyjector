@@ -5,13 +5,9 @@
 """
 from time import sleep
 import copy
-import json
-import os
 import logging
 
 import serial
-
-PATH = os.path.abspath(os.path.dirname(__file__)) + '/projector_configs/'
 
 
 class CommandFailedError(Exception):
@@ -24,10 +20,6 @@ class CommandExceptionError(Exception):
 
 class InvalidConfigError(Exception):
     """Loading the configuration failed as it is invalid."""
-
-
-class DeviceConfigMissingError(Exception):
-    """The specified device has no associated config file."""
 
 
 class InvalidCommandError(Exception):
@@ -65,7 +57,7 @@ class Pyjector(object):
     def __init__(
             self,
             port=None,
-            device_id='benq',
+            config=None,
             **kwargs
     ):
         """Initialize a new Pyjector object.
@@ -74,14 +66,7 @@ class Pyjector(object):
             to. If left as ``None``, you must call :func:`open` with the port
             before issuing commands.
 
-        :param device_id: The string which identifies the command set to use
-            with your device.
-
-            .. note::
-
-                Currently, only the default value, 'benq', is supported. Please
-                fill in a config file for your projector and make a pull
-                request!
+        :param config: The configuration dict to use
 
         :param **kwargs: Any extra keyword args will be passed to the internal
             :mod:`pyserial` :class:`serial.Serial` object, and will override
@@ -89,94 +74,36 @@ class Pyjector(object):
 
         """
         self.port = port
-        self.device_id = device_id
-        self.get_config(device_id, kwargs)
-        self.serial = self._initialize_pyserial(port)
-        self._create_commands()
+        self.config = config or {}
+        if kwargs:
+            self.config.update(kwargs)
 
-    def get_config(self, device_id, overrides):
-        """Get configuration for :mod:`pyserial` and the device.
-
-        Any configuration values for the internal:mod:`pyserial`
-        :class:`serial.Serial` specified will override the defaults from
-        the device configuration. Any config values not specified will
-        be left at the device default.
-
-        :param device_id: The string which identifies the command set to use
-            with your device.
-
-        :param overrides: A dict of configuration values.
-
-        """
-        self.available_configs = self._populate_configs()
-        self.config = self.get_device_config_from_id(device_id)
-        self._apply_overrides(overrides)
         self._validate_config()
+
         self.pyserial_config = self.get_pyserial_config()
+        self.serial = self._initialize_pyserial(port)
+
+        self._create_commands()
 
     def _validate_config(self):
         """Do basic sanity-checking on the loaded `config`."""
         if 'serial' not in self.config:
             raise InvalidConfigError(
-                'Configuration file for {0} does not contain needed serial'
-                'config values. Add a `serial` section to the config.'.format(
-                    self.device_id)
+                'Configuration does not contain needed serial'
+                'config values. Add a `serial` section to the config.'
             )
         if ('command_list' not in self.config or
                 len(self.config['command_list']) == 0):
             raise InvalidConfigError(
-                'Configuration file for {0} does not define any commands. '
-                'Add a `serial` section to the config.'.format(
-                    self.device_id)
+                'Configuration does not define any commands. '
+                'Add a `command_list` section to the config.'
             )
-
-    def _populate_configs(self):
-        """Load all json config files for devices.
-
-        :returns: dict -- All available configs.
-
-        """
-        configs = {}
-        for f in os.listdir(PATH):
-            if f.endswith('.json'):
-                data = open(PATH + f)
-                json_data = json.loads(data.read())
-                name = os.path.splitext(f)[0]
-                configs[name] = json_data
-        return configs
-
-    def _apply_overrides(self, overrides):
-        """Override specified values of the default configuration."""
-        self.config.update(overrides)
-
-    def get_device_config_from_id(self, device_id):
-        """Get device configuration.
-
-        :param device_id: The string which identifies the command set to use.
-
-        :returns: dict -- The device configuration, including default
-        :mod:`pyserial` settings, as well as the command set.
-
-        :raises: DeviceConfigMissingError
-
-        """
-        try:
-            config = self.available_configs[device_id]
-        except KeyError:
-            raise DeviceConfigMissingError(
-                'Could not find device config with name {0}. '
-                'Check that the file exists in '
-                ' `pyjector/projector_configs/`'.format(device_id)
-            )
-        return config
 
     def get_pyserial_config(self):
         """Get the :mod:`pyserial` config values from the device config.
 
         This also checks that config values are sane, and casts them to
         the appropriate type, as needed.
-
-        :func:`get_device_config_from_id` must be called before this method.
 
         :returns: dict -- The config values for :class:`serial.Serial`.
         :raises: InvalidConfigError
@@ -186,11 +113,11 @@ class Pyjector(object):
         for key, value in serial_config.items():
             if key not in self.possible_pyserial_settings:
                 raise InvalidConfigError(
-                    'Configuration file for {0} specifies a serial '
-                    'setting "{1}" not recognized by pyserial. Check '
+                    'Configuration specifies a serial '
+                    'setting "{0}" not recognized by pyserial. Check '
                     'http://pyserial.sourceforge.net/pyserial_api.html'
                     'for valid settings'.format(
-                        self.device_id, key)
+                        key)
                 )
             if key in self.pyserial_config_converter:
                 try:
@@ -198,12 +125,12 @@ class Pyjector(object):
                         self.pyserial_config_converter[key][value])
                 except KeyError:
                     raise InvalidConfigError(
-                        'Configuration file for {0} specifies a serial '
-                        'setting for "{1}" for key "{2}" not recognized '
+                        'Configuration specifies a serial '
+                        'setting for "{0}" for key "{1}" not recognized '
                         'by pyserial. Check '
                         'http://pyserial.sourceforge.net/pyserial_api.html'
                         'for valid settings'.format(
-                            self.device_id, value, key)
+                            value, key)
                     )
         return serial_config
 
@@ -223,7 +150,7 @@ class Pyjector(object):
 
     def _do_handshake(self):
         h = self.config.get('handshake')
-        if h == None:
+        if h is None:
             return
         self._send(h['send'])
         sleep(h['wait'])
@@ -259,8 +186,8 @@ class Pyjector(object):
         return response
 
     def _strip_response(self, response):
-        rs = right_surround=self.config.get('right_surround', '')
-        ls = left_surround=self.config.get('left_surround', '')
+        rs = self.config.get('right_surround', '')
+        ls = self.config.get('left_surround', '')
         return response.rstrip(rs).lstrip(ls)
 
     def _check_response(self, response):
@@ -322,7 +249,7 @@ class Pyjector(object):
         config = self.config
 
         serial_command = self.command_spec[command]['command']
-        serial_action  = actual_action = self.command_spec[command]['actions'][action]
+        serial_action = actual_action = self.command_spec[command]['actions'][action]
         if isinstance(serial_action, dict):
             actual_action = serial_action.pop('action')
             config = copy.deepcopy(config)
