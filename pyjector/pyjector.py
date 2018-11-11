@@ -28,11 +28,12 @@ class InvalidCommandError(Exception):
 
 class Pyjector(object):
 
-    possible_pyserial_settings = [
+    VALID_PYSERIAL_SETTINGS = [
         'port', 'baudrate', 'bytesize', 'parity', 'stopbits', 'timeout',
         'xonxoff', 'rtscts', 'dsrdtr', 'writeTimeout', 'InterCharTimeout',
     ]
-    pyserial_config_converter = {
+
+    PYSERIAL_CONFIG_CONVERTER = {
         'bytesize': {
             5: serial.FIVEBITS,
             6: serial.SIXBITS,
@@ -111,7 +112,7 @@ class Pyjector(object):
         """
         serial_config = self.config['serial']
         for key, value in serial_config.items():
-            if key not in self.possible_pyserial_settings:
+            if key not in self.VALID_PYSERIAL_SETTINGS:
                 raise InvalidConfigError(
                     'Configuration specifies a serial '
                     'setting "{0}" not recognized by pyserial. Check '
@@ -119,10 +120,10 @@ class Pyjector(object):
                     'for valid settings'.format(
                         key)
                 )
-            if key in self.pyserial_config_converter:
+            if key in self.PYSERIAL_CONFIG_CONVERTER:
                 try:
                     serial_config[key] = (
-                        self.pyserial_config_converter[key][value])
+                        self.PYSERIAL_CONFIG_CONVERTER[key][value])
                 except KeyError:
                     raise InvalidConfigError(
                         'Configuration specifies a serial '
