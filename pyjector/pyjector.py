@@ -4,6 +4,7 @@
 
 """
 from time import sleep
+import copy
 import json
 import os
 import logging
@@ -318,16 +319,23 @@ class Pyjector(object):
         to the proper command for the device.
 
         """
+        config = self.config
+
         serial_command = self.command_spec[command]['command']
-        serial_action  = self.command_spec[command]['actions'][action]
+        serial_action  = actual_action = self.command_spec[command]['actions'][action]
+        if isinstance(serial_action, dict):
+            actual_action = serial_action.pop('action')
+            config = copy.deepcopy(config)
+            config.update(serial_action)
+
         command_string = (
             '{left_surround}{command}{seperator}'
             '{action}{right_surround}'.format(
-                left_surround=self.config.get('left_surround', ''),
+                left_surround=config.get('left_surround', ''),
                 command=serial_command,
-                seperator=self.config.get('seperator', ''),
-                action=serial_action,
-                right_surround=self.config.get('right_surround', ''),
+                seperator=config.get('seperator', ''),
+                action=actual_action,
+                right_surround=config.get('right_surround', ''),
             )
         )
         return command_string
