@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='Pyjector',
@@ -16,4 +14,8 @@ setup(
     package_data={
         'pyjector': ['projector_configs/*.json'],
     },
+    entry_points='''
+        [console_scripts]
+        pyjector_controller=pyjector.cli.pyjector_controller:main
+    ''',
 )
