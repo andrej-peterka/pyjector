@@ -11,17 +11,17 @@ Usage
 =====
 
 ```Python
+import json
 from pyjector import Pyjector
 
 # Look up what port your projector is connected to, using something
 # like `dmesg` if you're on linux.
 port = '/dev/ttyUSB0'
 
-# The only valid device id at the moment is `benq`. This is used
-# to figure out what commands are supported, and the format needed.
-device_id = 'benq'
-
-pyjector = Pyjector(port=port, device_id=device_id)
+# Load the configuration from you JSON and pass it to the class.
+# Check the files in `pyjector/projector_configs` for examples.
+conf = json.load(open('benq.json'))
+pyjector = Pyjector(port=port, config=conf)
 
 # Let's check what commands claim to be supported by our device.
 print(pyjector.command_list)
@@ -104,5 +104,33 @@ It should follow the template below...
     }
 }
 ```
+
+An additional format is allowed when specifying actions...
+
+```json
+...
+"command_list": {
+    "power": {
+        "command": "pow",
+        "actions": {
+            "on": "on",
+            "off": "off",
+            "status": {
+                "action": "?",
+                "seperator": ""
+            }
+        }
+    },
+}
+```
+All the root-level configuration elements can be provided next to the `action` key
+to update configuration for that action.
+
+A use-case for this is when a certain **action** of a command requires different
+configuration.
+
+Such a case was observed at some Epson projectors where `PWR ON` and `PWR OFF` are
+valid, but `PWR?` is required for checking the power status. 
+
 Please do make pull requests for any other devices.  If code changes need made
 in order for your device to work, open an issue and I'll work to resolve it.
