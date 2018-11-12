@@ -22,7 +22,7 @@ def main():
     logging.basicConfig(level=args.loglevel, format='%(created)f %(levelname)s %(message)s')
 
     if not pkg_resources.resource_exists(__name__, 'projector_configs/{device_id}.json'.format(device_id=args.device)):
-        logging.error('Configuration file for "{device_id} not found at {resource_folder}.'.format(
+        logging.error('Configuration file for "{device_id}" not found at "{resource_folder}".'.format(
             device_id=args.device,
             resource_folder=pkg_resources.resource_filename(__name__, 'projector_configs')
         ))
